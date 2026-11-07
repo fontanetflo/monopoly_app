@@ -83,6 +83,9 @@ button:disabled {
   font-size: 32px;
   line-height: 1.2;
 }
+#d3.monopoly-label {
+  font-size: 16px;
+}
 .die small { margin-top: 6px; }
 .red {
   background: #b91c1c;
@@ -255,6 +258,7 @@ function resetDice() {
   $("d1").textContent = "—";
   $("d2").textContent = "—";
   $("d3").textContent = "—";
+  $("d3").classList.remove("monopoly-label");
   $("result").textContent = "Lance les dés";
   $("action").classList.add("hidden");
   $("rollBtn").textContent = "Lancer les dés";
@@ -285,6 +289,7 @@ function roll() {
     ? dice[2] <= 3 ? dice[2] :
       dice[2] === 4 ? "BUS" : "M. MONOPOLY"
     : "—";
+  $("d3").classList.toggle("monopoly-label", useRapid && dice[2] === 5);
 
   $("rollCount").textContent = `Lancers : ${rollCount}`;
   $("rollBtn").textContent = "Nouveau lancer";
