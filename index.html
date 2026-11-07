@@ -94,6 +94,9 @@ button:disabled {
   font-weight: 700;
   margin: 16px 0;
 }
+.result.mr-monopoly {
+  font-size: 18px;
+}
 .action {
   background: #f3f4f6;
   padding: 14px;
@@ -296,6 +299,7 @@ function showResult(useRapid) {
 
   action.classList.add("hidden");
   action.innerHTML = "";
+  $("result").classList.remove("mr-monopoly");
 
   if (!useRapid) {
     $("result").textContent = `${sum} cases`;
@@ -328,6 +332,7 @@ function showResult(useRapid) {
       });
     });
   } else {
+    $("result").classList.add("mr-monopoly");
     $("result").textContent = "M. Monopoly";
     action.classList.remove("hidden");
     action.innerHTML = `
@@ -354,4 +359,5 @@ updateTimer();
 </script>
 </body>
 </html>
+
 
