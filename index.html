@@ -1,0 +1,357 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monopoly — Dé rapide</title>
+<style>
+:root {
+  font-family: system-ui, sans-serif;
+  color: #18221d;
+  background: #f1f4f2;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 16px;
+}
+main {
+  max-width: 480px;
+  margin: auto;
+}
+h1 { text-align: center; }
+.panel {
+  background: white;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 3px 12px #0000000c;
+}
+.modes {
+  display: flex;
+  gap: 8px;
+}
+button, select {
+  font: inherit;
+  cursor: pointer;
+}
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  background: #166534;
+  color: white;
+}
+button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+.secondary {
+  background: #e5e7eb;
+  color: #222;
+}
+.modes button { flex: 1; }
+.modes button.active { background: #166534; color: white; }
+.timer {
+  text-align: center;
+  background: #f0fdf4;
+  border-radius: 14px;
+  padding: 16px;
+}
+#time {
+  font-size: 42px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.dice {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+.die {
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 14px;
+}
+.die strong {
+  font-size: 32px;
+  line-height: 1.2;
+}
+.die small { margin-top: 6px; }
+.red {
+  background: #b91c1c;
+  color: white;
+}
+.result {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 16px 0;
+}
+.action {
+  background: #f3f4f6;
+  padding: 14px;
+  border-radius: 12px;
+  margin-top: 12px;
+}
+.action label {
+  display: block;
+  margin: 10px 0;
+}
+.full { width: 100%; }
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.controls button { flex: 1; }
+.muted { color: #666; font-size: 13px; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Monopoly</h1>
+
+  <section class="panel">
+    <div class="modes">
+      <button id="rapidBtn" class="active">Tournoi</button>
+      <button id="standardBtn" class="secondary">Standard</button>
+    </div>
+
+    <div id="timerPanel" class="timer" style="margin-top:18px">
+      <div>Chronomètre de la partie</div>
+      <div id="time">60:00</div>
+      <div id="timerStatus">Prêt à démarrer</div>
+      <div class="controls">
+        <button id="startBtn" class="full">Démarrer</button>
+        <button id="resetTimer" class="secondary">Réinitialiser</button>
+      </div>
+    </div>
+
+    <label id="lapLabel" style="display:block;margin-top:16px">
+      <input type="checkbox" id="lap">
+      J'ai déjà passé la case Départ
+    </label>
+  </section>
+
+  <section class="panel">
+    <div class="dice">
+      <div class="die">
+        <strong id="d1">—</strong>
+        <small>Dé blanc</small>
+      </div>
+      <div class="die">
+        <strong id="d2">—</strong>
+        <small>Dé blanc</small>
+      </div>
+      <div class="die red" id="redDie">
+        <strong id="d3">—</strong>
+        <small>Dé rapide</small>
+      </div>
+    </div>
+
+    <div id="result" class="result">Lance les dés</div>
+    <div id="action" class="action hidden"></div>
+
+    <button id="rollBtn" class="full">Lancer les dés</button>
+    <p class="muted" id="rollCount">Lancers : 0</p>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let mode = "rapid";
+let dice = [1, 1, 1];
+let rolled = false;
+let rollCount = 0;
+let seconds = 3600;
+let running = false;
+let started = false;
+let timerId = null;
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+}
+
+function updateTimer() {
+  $("time").textContent = formatTime(seconds);
+  $("timerStatus").textContent =
+    seconds === 0 ? "Temps écoulé — fin de partie" :
+    running ? "Partie en cours" :
+    started ? "En pause" : "Prêt à démarrer";
+
+  $("startBtn").textContent =
+    running ? "Pause" : started ? "Reprendre" : "Démarrer";
+
+  $("startBtn").disabled = seconds === 0;
+}
+
+function startPause() {
+  if (seconds === 0) return;
+
+  if (running) {
+    clearInterval(timerId);
+    timerId = null;
+    running = false;
+  } else {
+    started = true;
+    running = true;
+
+    timerId = setInterval(() => {
+      seconds--;
+
+      if (seconds <= 0) {
+        seconds = 0;
+        running = false;
+        clearInterval(timerId);
+        timerId = null;
+      }
+
+      updateTimer();
+    }, 1000);
+  }
+
+  updateTimer();
+}
+
+function resetTimer() {
+  clearInterval(timerId);
+  timerId = null;
+  seconds = 3600;
+  running = false;
+  started = false;
+  updateTimer();
+}
+
+function setMode(newMode) {
+  mode = newMode;
+  $("rapidBtn").classList.toggle("active", mode === "rapid");
+  $("standardBtn").classList.toggle("active", mode === "standard");
+  $("rapidBtn").classList.toggle("secondary", mode !== "rapid");
+  $("standardBtn").classList.toggle("secondary", mode !== "standard");
+
+  $("timerPanel").classList.toggle("hidden", mode !== "rapid");
+  $("lapLabel").classList.toggle("hidden", mode !== "rapid");
+
+  $("lap").checked = false;
+  resetDice();
+}
+
+function resetDice() {
+  rolled = false;
+  $("d1").textContent = "—";
+  $("d2").textContent = "—";
+  $("d3").textContent = "—";
+  $("result").textContent = "Lance les dés";
+  $("action").classList.add("hidden");
+  $("rollBtn").textContent = "Lancer les dés";
+}
+
+function rollDie() {
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+function roll() {
+  if (mode === "rapid" && seconds === 0) return;
+
+  dice[0] = rollDie();
+  dice[1] = rollDie();
+
+  const useRapid = mode === "rapid" && $("lap").checked;
+
+  dice[2] = useRapid
+    ? Math.floor(Math.random() * 5) + 1
+    : 0;
+
+  rolled = true;
+  rollCount++;
+
+  $("d1").textContent = dice[0];
+  $("d2").textContent = dice[1];
+  $("d3").textContent = useRapid
+    ? dice[2] <= 3 ? dice[2] :
+      dice[2] === 4 ? "BUS" : "M. MONOPOLY"
+    : "—";
+
+  $("rollCount").textContent = `Lancers : ${rollCount}`;
+  $("rollBtn").textContent = "Nouveau lancer";
+
+  showResult(useRapid);
+}
+
+function showResult(useRapid) {
+  const [a, b, c] = dice;
+  const sum = a + b;
+  const action = $("action");
+
+  action.classList.add("hidden");
+  action.innerHTML = "";
+
+  if (!useRapid) {
+    $("result").textContent = `${sum} cases`;
+
+    if (a === b) {
+      $("result").textContent += " — Double, rejoue";
+    }
+    return;
+  }
+
+  if (c <= 3) {
+    $("result").textContent = `${sum + c} cases`;
+  } else if (c === 4) {
+    $("result").textContent = "Bus — choisis ton déplacement";
+    action.classList.remove("hidden");
+    action.innerHTML = `
+      <label><input type="radio" name="bus" value="${sum}">
+        Somme des deux dés : ${sum} cases</label>
+      <label><input type="radio" name="bus" value="${a}">
+        Premier dé : ${a} cases</label>
+      <label><input type="radio" name="bus" value="${b}">
+        Deuxième dé : ${b} cases</label>
+      <div id="busResult" class="result"></div>
+    `;
+
+    action.querySelectorAll('input[name="bus"]').forEach(input => {
+      input.addEventListener("change", () => {
+        $("busResult").textContent =
+          `Déplacement : ${input.value} cases`;
+      });
+    });
+  } else {
+    $("result").textContent = "M. Monopoly";
+    action.classList.remove("hidden");
+    action.innerHTML = `
+      Avance de ${sum} cases avec les dés blancs,
+      puis jusqu'à la prochaine propriété non achetée.
+      <br><br>
+      <label><input type="checkbox" id="mrDone">
+        Deuxième déplacement effectué</label>
+    `;
+  }
+
+  if (a === b) {
+    $("result").textContent += " — Double blanc : rejoue";
+  }
+}
+
+$("rapidBtn").addEventListener("click", () => setMode("rapid"));
+$("standardBtn").addEventListener("click", () => setMode("standard"));
+$("startBtn").addEventListener("click", startPause);
+$("resetTimer").addEventListener("click", resetTimer);
+$("rollBtn").addEventListener("click", roll);
+
+updateTimer();
+</script>
+</body>
+</html>
+
